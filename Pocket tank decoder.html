@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>PTD Tool</title>
+
+<style>
+  body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+    padding-top: 60px;
+  }
+
+  h2 {
+    margin-bottom: 20px;
+  }
+
+  input {
+    margin: 10px;
+  }
+
+  button, select {
+    padding: 12px 20px;
+    margin: 10px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
+
+  button {
+    background: #1e293b;
+    color: white;
+  }
+
+  button:hover {
+    background: #334155;
+  }
+
+  select {
+    background: #1e293b;
+    color: white;
+  }
+</style>
+</head>
+
+<body>
+
+<h2>PTD Encode / Decode Tool</h2>
+
+<input type="file" id="fileInput"><br>
+
+<button onclick="decode()">Decode to .bin</button>
+
+<br>
+
+<select id="ext">
+  <option value=".wep">.wep</option>
+  <option value=".wea">.wea</option>
+  <option value=".emit">.emit</option>
+  <option value=".dat">.dat</option>
+</select>
+
+<button onclick="encode()">Encode to selected type</button>
+
+<script>
+function decode() {
+  processFile("decode");
+}
+
+function encode() {
+  processFile("encode");
+}
+
+function processFile(mode) {
+  const file = document.getElementById("fileInput").files[0];
+  if (!file) return alert("Select a file");
+
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    let data = new Uint8Array(e.target.result);
+
+    if (mode === "decode") {
+      // reverse order
+      swapBlocks(data);
+      xorTransform(data);
+    } else {
+      // normal order
+      xorTransform(data);
+      swapBlocks(data);
+    }
+
+    let name = file.name;
+    let newName;
+
+    if (mode === "decode") {
+      newName = name.replace(/\.[^/.]+$/, "") + ".bin";
+    } else {
+      let ext = document.getElementById("ext").value;
+      newName = name.replace(/\.[^/.]+$/, "") + ext;
+    }
+
+    const blob = new Blob([data]);
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = newName;
+    a.click();
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+// XOR step
+function xorTransform(data) {
+  let mask = 0x03;
+  for (let i = 0; i < data.length; i++) {
+    data[i] ^= mask;
+    mask ^= 0x1B;
+  }
+}
+
+// swap step
+function swapBlocks(data) {
+  for (let i = 0; i + 15 < data.length; i += 16) {
+    swap(data, i + 0, i + 8);
+    swap(data, i + 1, i + 9);
+    swap(data, i + 5, i + 13);
+    swap(data, i + 6, i + 14);
+  }
+}
+
+// helper
+function swap(arr, a, b) {
+  let t = arr[a];
+  arr[a] = arr[b];
+  arr[b] = t;
+}
+</script>
+
+</body>
+</html>
